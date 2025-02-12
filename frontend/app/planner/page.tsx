@@ -125,6 +125,11 @@ export default function PlannerPage() {
     });
   };
 
+  const getUserEmailById = (userId: string) => {
+    const user = users.find((u) => u.id === userId);
+    return user ? user.email : "Unknown User";
+  };
+
   const filteredEntries = entries.filter((entry) => {
     const matchesUser =
       filters.user === "all" || entry.user_id === filters.user;
@@ -524,13 +529,17 @@ export default function PlannerPage() {
               key={entry.id}
               className={`transition-all duration-200 hover:shadow-lg relative ${
                 isCurrentDay(entry.date) ? "border-green-500 border-2" : ""
-              }`}
+              } ${entry.user_id !== user?.id ? "border-white border-2" : ""}`}
             >
-              {isCurrentDay(entry.date) && (
+              {isCurrentDay(entry.date) && entry.user_id === user?.id ? (
                 <Badge className="absolute top-2 right-2 bg-green-500">
                   Today&apos;s Plan
                 </Badge>
-              )}
+              ) : entry.user_id !== user?.id ? (
+                <Badge className="absolute top-2 right-2 bg-gray-500">
+                  {getUserEmailById(entry.user_id)}
+                </Badge>
+              ) : null}
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <CalendarIcon className="h-5 w-5" />
