@@ -28,8 +28,12 @@ export default function ProjectsPage() {
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectEmoji, setNewProjectEmoji] = useState("");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  // @ts-expect-error
-  const [user, setUser] = useState<any>(null);
+  interface User {
+    id: string;
+    email?: string;
+  }
+
+  const [user, setUser] = useState<User | null>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
   const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
   const { toast } = useToast();
@@ -84,33 +88,32 @@ export default function ProjectsPage() {
       }
     }
   };
-  // @ts-expect-error
-  const updateProject = async (
-    id: string,
-    newName: string,
-    newEmoji: string
-  ) => {
-    const { error } = await supabase
-      .from("projects")
-      .update({ name: newName, emoji: newEmoji })
-      .eq("id", id);
-    if (error) {
-      console.error("Error updating project:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update project",
-        variant: "destructive",
-      });
-    } else {
-      setProjects(
-        projects.map((p) =>
-          p.id === id ? { ...p, name: newName, emoji: newEmoji } : p
-        )
-      );
-      setEditingProject(null);
-      toast({ title: "Success", description: "Project updated successfully" });
-    }
-  };
+  // const updateProject = async (
+  //   id: string,
+  //   newName: string,
+  //   newEmoji: string
+  // ) => {
+  //   const { error } = await supabase
+  //     .from("projects")
+  //     .update({ name: newName, emoji: newEmoji })
+  //     .eq("id", id);
+  //   if (error) {
+  //     console.error("Error updating project:", error);
+  //     toast({
+  //       title: "Error",
+  //       description: "Failed to update project",
+  //       variant: "destructive",
+  //     });
+  //   } else {
+  //     setProjects(
+  //       projects.map((p) =>
+  //         p.id === id ? { ...p, name: newName, emoji: newEmoji } : p
+  //       )
+  //     );
+  //     setEditingProject(null);
+  //     toast({ title: "Success", description: "Project updated successfully" });
+  //   }
+  // };
 
   const deleteProject = async (id: string) => {
     const { error } = await supabase.from("projects").delete().eq("id", id);

@@ -35,8 +35,12 @@ export default function ProjectPage() {
   const [newItemDeadline, setNewItemDeadline] = useState("");
   const [editingItem, setEditingItem] = useState<TodoItem | null>(null);
   const [projectName, setProjectName] = useState("");
-  // @ts-expect-error
-  const [user, setUser] = useState<any>(null);
+  interface User {
+    id: string;
+    email?: string;
+  }
+
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {

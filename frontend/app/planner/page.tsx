@@ -36,8 +36,7 @@ export default function PlannerPage() {
   const [newEntryContent, setNewEntryContent] = useState("");
   const [newEntryEmoji, setNewEntryEmoji] = useState("");
   const [editingEntry, setEditingEntry] = useState<PlannerEntry | null>(null);
-  // @ts-expect-error
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
   const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
   const { toast } = useToast();
@@ -100,36 +99,36 @@ export default function PlannerPage() {
       }
     }
   };
-  // @ts-expect-error
-  const updateEntry = async (
-    id: string,
-    newContent: string,
-    newEmoji: string
-  ) => {
-    const { error } = await supabase
-      .from("planner_entries")
-      .update({ content: newContent, emoji: newEmoji })
-      .eq("id", id);
-    if (error) {
-      console.error("Error updating planner entry:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update planner entry",
-        variant: "destructive",
-      });
-    } else {
-      setEntries(
-        entries.map((e) =>
-          e.id === id ? { ...e, content: newContent, emoji: newEmoji } : e
-        )
-      );
-      setEditingEntry(null);
-      toast({
-        title: "Success",
-        description: "Planner entry updated successfully",
-      });
-    }
-  };
+
+  // const updateEntry = async (
+  //   id: string,
+  //   newContent: string,
+  //   newEmoji: string
+  // ) => {
+  //   const { error } = await supabase
+  //     .from("planner_entries")
+  //     .update({ content: newContent, emoji: newEmoji })
+  //     .eq("id", id);
+  //   if (error) {
+  //     console.error("Error updating planner entry:", error);
+  //     toast({
+  //       title: "Error",
+  //       description: "Failed to update planner entry",
+  //       variant: "destructive",
+  //     });
+  //   } else {
+  //     setEntries(
+  //       entries.map((e) =>
+  //         e.id === id ? { ...e, content: newContent, emoji: newEmoji } : e
+  //       )
+  //     );
+  //     setEditingEntry(null);
+  //     toast({
+  //       title: "Success",
+  //       description: "Planner entry updated successfully",
+  //     });
+  //   }
+  // };
 
   const deleteEntry = async (id: string) => {
     const { error } = await supabase
