@@ -416,11 +416,11 @@ export default function PlannerPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="p-6 border-2 border-green-500">
+            <Card className="p-6 border-2">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Today&apos;s Plan</span>
-                  <Badge className="bg-green-500">Active</Badge>
+                  {/* <Badge className="bg-green-500">Active</Badge> */}
                 </CardTitle>
               </CardHeader>
               <CardContent>
