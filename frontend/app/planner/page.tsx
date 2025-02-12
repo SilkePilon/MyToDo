@@ -100,7 +100,7 @@ export default function PlannerPage() {
       }
     }
   };
-  // @ts-ignore
+  // ts-expect-error
   const updateEntry = async (
     id: string,
     newContent: string,
