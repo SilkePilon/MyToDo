@@ -28,7 +28,7 @@ export default function ProjectsPage() {
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectEmoji, setNewProjectEmoji] = useState("");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  // ts-expect-error
+  // @ts-expect-error
   const [user, setUser] = useState<any>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
   const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
@@ -84,7 +84,7 @@ export default function ProjectsPage() {
       }
     }
   };
-  // @ts-ignore
+  // @ts-expect-error
   const updateProject = async (
     id: string,
     newName: string,

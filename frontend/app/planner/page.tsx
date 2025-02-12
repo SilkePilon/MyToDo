@@ -36,7 +36,7 @@ export default function PlannerPage() {
   const [newEntryContent, setNewEntryContent] = useState("");
   const [newEntryEmoji, setNewEntryEmoji] = useState("");
   const [editingEntry, setEditingEntry] = useState<PlannerEntry | null>(null);
-  // @ts-ignore
+  // @ts-expect-error
   const [user, setUser] = useState<any>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
   const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
@@ -100,7 +100,7 @@ export default function PlannerPage() {
       }
     }
   };
-  // ts-expect-error
+  // @ts-expect-error
   const updateEntry = async (
     id: string,
     newContent: string,
