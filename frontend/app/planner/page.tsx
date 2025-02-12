@@ -36,7 +36,12 @@ export default function PlannerPage() {
   const [newEntryContent, setNewEntryContent] = useState("");
   const [newEntryEmoji, setNewEntryEmoji] = useState("");
   const [editingEntry, setEditingEntry] = useState<PlannerEntry | null>(null);
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  interface User {
+    id: string;
+    email?: string;
+  }
+
+  const [user, setUser] = useState<User | null>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
   const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
   const { toast } = useToast();
@@ -49,15 +54,11 @@ export default function PlannerPage() {
       setUser(user);
       if (user) {
         const { data, error } = await supabase
-          .from("planner_entries")
-          .select("*, user:users(email)")
+          .from("planner_entries_with_users")
+          .select("*")
           .order("date", { ascending: false });
         if (error) console.error("Error fetching planner entries:", error);
-        else
-          setEntries(
-            data.map((entry) => ({ ...entry, user_email: entry.user.email })) ||
-              []
-          );
+        else setEntries(data || []);
 
         const { data: usersData, error: usersError } = await supabase
           .from("users")

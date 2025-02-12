@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,12 +29,7 @@ export default function ProjectsPage() {
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectEmoji, setNewProjectEmoji] = useState("");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  interface User {
-    id: string;
-    email?: string;
-  }
-
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
   const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
   const { toast } = useToast();
@@ -45,14 +41,11 @@ export default function ProjectsPage() {
       } = await supabase.auth.getUser();
       setUser(user);
       const { data: projectsData, error: projectsError } = await supabase
-        .from("projects")
-        .select("*, user:users(email)");
+        .from("projects_with_users")
+        .select("*");
       if (projectsError)
         console.error("Error fetching projects:", projectsError);
-      else
-        setProjects(
-          projectsData.map((p) => ({ ...p, user_email: p.user.email })) || []
-        );
+      else setProjects(projectsData || []);
 
       const { data: usersData, error: usersError } = await supabase
         .from("users")
@@ -88,6 +81,7 @@ export default function ProjectsPage() {
       }
     }
   };
+
   // const updateProject = async (
   //   id: string,
   //   newName: string,

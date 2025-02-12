@@ -25,6 +25,7 @@ interface TodoItem {
   emoji: string;
   user_id: string;
   user_email: string;
+  project_name: string;
 }
 
 export default function ProjectPage() {
@@ -50,24 +51,17 @@ export default function ProjectPage() {
       } = await supabase.auth.getUser();
       setUser(user);
 
-      const { data: projectData, error: projectError } = await supabase
-        .from("projects")
-        .select("name")
-        .eq("id", id)
-        .single();
-
-      if (projectError) console.error("Error fetching project:", projectError);
-      else setProjectName(projectData.name);
-
       const { data, error } = await supabase
-        .from("todo_items")
-        .select("*, user:users(email)")
+        .from("todo_items_with_users")
+        .select("*")
         .eq("project_id", id);
       if (error) console.error("Error fetching todo items:", error);
-      else
-        setTodoItems(
-          data.map((item) => ({ ...item, user_email: item.user.email })) || []
-        );
+      else {
+        setTodoItems(data || []);
+        if (data && data.length > 0) {
+          setProjectName(data[0].project_name);
+        }
+      }
     };
     fetchTodoItems();
   }, [id]);
@@ -92,7 +86,12 @@ export default function ProjectPage() {
           variant: "destructive",
         });
       } else {
-        setTodoItems([...todoItems, { ...data[0], user_email: user.email }]);
+        const newItem = {
+          ...data[0],
+          user_email: user.email,
+          project_name: projectName,
+        };
+        setTodoItems([...todoItems, newItem]);
         setNewItemTitle("");
         setNewItemEmoji("");
         setNewItemDeadline("");
