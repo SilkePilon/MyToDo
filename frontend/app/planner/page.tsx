@@ -12,7 +12,7 @@ import {
   CalendarIcon,
 } from "@radix-ui/react-icons";
 import { supabase } from "@/lib/supabase-client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast"; // Updated import
 import {
   Select,
   SelectContent,
@@ -21,6 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+
+interface User {
+  id: string;
+  email?: string | null;
+}
 
 interface PlannerEntry {
   id: string;
@@ -36,14 +41,9 @@ export default function PlannerPage() {
   const [newEntryContent, setNewEntryContent] = useState("");
   const [newEntryEmoji, setNewEntryEmoji] = useState("");
   const [editingEntry, setEditingEntry] = useState<PlannerEntry | null>(null);
-  interface User {
-    id: string;
-    email?: string;
-  }
-
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null); // Updated User type
   const [userFilter, setUserFilter] = useState<string>("all");
-  const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
+  const [users, setUsers] = useState<User[]>([]); // Updated User type
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,35 +101,43 @@ export default function PlannerPage() {
     }
   };
 
-  // const updateEntry = async (
-  //   id: string,
-  //   newContent: string,
-  //   newEmoji: string
-  // ) => {
-  //   const { error } = await supabase
-  //     .from("planner_entries")
-  //     .update({ content: newContent, emoji: newEmoji })
-  //     .eq("id", id);
-  //   if (error) {
-  //     console.error("Error updating planner entry:", error);
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to update planner entry",
-  //       variant: "destructive",
-  //     });
-  //   } else {
-  //     setEntries(
-  //       entries.map((e) =>
-  //         e.id === id ? { ...e, content: newContent, emoji: newEmoji } : e
-  //       )
-  //     );
-  //     setEditingEntry(null);
-  //     toast({
-  //       title: "Success",
-  //       description: "Planner entry updated successfully",
-  //     });
-  //   }
-  // };
+  const updateEntry = async (
+    id: string,
+    newContent: string,
+    newEmoji: string
+  ) => {
+    if (user && editingEntry && editingEntry.user_id === user.id) {
+      const { error } = await supabase
+        .from("planner_entries")
+        .update({ content: newContent, emoji: newEmoji })
+        .eq("id", id);
+      if (error) {
+        console.error("Error updating planner entry:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update planner entry",
+          variant: "destructive",
+        });
+      } else {
+        setEntries(
+          entries.map((e) =>
+            e.id === id ? { ...e, content: newContent, emoji: newEmoji } : e
+          )
+        );
+        setEditingEntry(null);
+        toast({
+          title: "Success",
+          description: "Planner entry updated successfully",
+        });
+      }
+    } else {
+      toast({
+        title: "Error",
+        description: "You can only edit your own entries",
+        variant: "destructive",
+      });
+    }
+  };
 
   const deleteEntry = async (id: string) => {
     const { error } = await supabase
@@ -252,35 +260,56 @@ export default function PlannerPage() {
                       })
                     }
                   />
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setEditingEntry(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        updateEntry(
+                          editingEntry.id,
+                          editingEntry.content,
+                          editingEntry.emoji
+                        )
+                      }
+                    >
+                      Save
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <p>{entry.content}</p>
+                <>
+                  <p>{entry.content}</p>
+                  <div className="flex justify-between items-center mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Created by: {entry.user_email}
+                    </p>
+                    <div className="flex space-x-2">
+                      {entry.user_id === user?.id && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setEditingEntry(entry)}
+                          >
+                            <Pencil1Icon className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => deleteEntry(entry.id)}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
-              <div className="flex justify-between items-center mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Created by: {entry.user_email}
-                </p>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setEditingEntry(
-                        editingEntry?.id === entry.id ? null : entry
-                      )
-                    }
-                  >
-                    <Pencil1Icon className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => deleteEntry(entry.id)}
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         ))}

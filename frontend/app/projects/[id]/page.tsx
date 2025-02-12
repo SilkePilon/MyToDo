@@ -4,17 +4,24 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   PlusIcon,
   Pencil1Icon,
   TrashIcon,
   CalendarIcon,
+  CheckIcon,
 } from "@radix-ui/react-icons";
 import { supabase } from "@/lib/supabase-client";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TodoItem {
   id: string;
@@ -28,6 +35,24 @@ interface TodoItem {
   project_name: string;
 }
 
+interface User {
+  id: string;
+  email?: string | null;
+}
+
+const commonEmojis = [
+  "📝",
+  "🔨",
+  "📅",
+  "🎯",
+  "📚",
+  "💡",
+  "🔬",
+  "🖥️",
+  "📊",
+  "🚀",
+];
+
 export default function ProjectPage() {
   const { id } = useParams();
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
@@ -36,11 +61,6 @@ export default function ProjectPage() {
   const [newItemDeadline, setNewItemDeadline] = useState("");
   const [editingItem, setEditingItem] = useState<TodoItem | null>(null);
   const [projectName, setProjectName] = useState("");
-  interface User {
-    id: string;
-    email?: string;
-  }
-
   const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
 
@@ -88,7 +108,7 @@ export default function ProjectPage() {
       } else {
         const newItem = {
           ...data[0],
-          user_email: user.email,
+          user_email: user.email || "",
           project_name: projectName,
         };
         setTodoItems([...todoItems, newItem]);
@@ -103,44 +123,73 @@ export default function ProjectPage() {
     }
   };
 
-  const updateTodoItem = async (item: TodoItem) => {
-    const { error } = await supabase
-      .from("todo_items")
-      .update(item)
-      .eq("id", item.id);
-    if (error) {
-      console.error("Error updating todo item:", error);
+  const deleteTodoItem = async (id: string) => {
+    const itemToDelete = todoItems.find((i) => i.id === id);
+    if (user && itemToDelete && itemToDelete.user_id === user.id) {
+      const { error } = await supabase.from("todo_items").delete().eq("id", id);
+      if (error) {
+        console.error("Error deleting todo item:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete todo item",
+          variant: "destructive",
+        });
+      } else {
+        setTodoItems(todoItems.filter((i) => i.id !== id));
+        toast({
+          title: "Success",
+          description: "Todo item deleted successfully",
+        });
+      }
+    } else {
       toast({
         title: "Error",
-        description: "Failed to update todo item",
+        description: "You can only delete your own todo items",
         variant: "destructive",
-      });
-    } else {
-      setTodoItems(todoItems.map((i) => (i.id === item.id ? item : i)));
-      setEditingItem(null);
-      toast({
-        title: "Success",
-        description: "Todo item updated successfully",
       });
     }
   };
 
-  const deleteTodoItem = async (id: string) => {
-    const { error } = await supabase.from("todo_items").delete().eq("id", id);
-    if (error) {
-      console.error("Error deleting todo item:", error);
+  const toggleTodoItemCompletion = async (item: TodoItem) => {
+    if (user && item.user_id === user.id) {
+      const updatedItem = { ...item, completed: !item.completed };
+      const { error } = await supabase
+        .from("todo_items")
+        .update({ completed: updatedItem.completed })
+        .eq("id", item.id);
+      if (error) {
+        console.error("Error updating todo item completion:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update todo item",
+          variant: "destructive",
+        });
+      } else {
+        setTodoItems(
+          todoItems.map((i) => (i.id === item.id ? updatedItem : i))
+        );
+        toast({
+          title: "Success",
+          description: "Todo item updated successfully",
+        });
+      }
+    } else {
       toast({
         title: "Error",
-        description: "Failed to delete todo item",
+        description: "You can only update your own todo items",
         variant: "destructive",
       });
-    } else {
-      setTodoItems(todoItems.filter((i) => i.id !== id));
-      toast({
-        title: "Success",
-        description: "Todo item deleted successfully",
-      });
     }
+  };
+
+  const getCardColor = (deadline: string | null) => {
+    if (!deadline) return "border-blue-500";
+    const daysUntilDeadline = Math.ceil(
+      (new Date(deadline).getTime() - new Date().getTime()) / (1000 * 3600 * 24)
+    );
+    if (daysUntilDeadline <= 1) return "border-red-500";
+    if (daysUntilDeadline <= 3) return "border-purple-500";
+    return "border-blue-500";
   };
 
   if (!user) {
@@ -175,13 +224,18 @@ export default function ProjectPage() {
             onChange={(e) => setNewItemTitle(e.target.value)}
             className="flex-grow"
           />
-          <Input
-            type="text"
-            placeholder="Emoji"
-            value={newItemEmoji}
-            onChange={(e) => setNewItemEmoji(e.target.value)}
-            className="w-20"
-          />
+          <Select value={newItemEmoji} onValueChange={setNewItemEmoji}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Emoji" />
+            </SelectTrigger>
+            <SelectContent>
+              {commonEmojis.map((emoji) => (
+                <SelectItem key={emoji} value={emoji}>
+                  {emoji}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             type="date"
             value={newItemDeadline}
@@ -196,16 +250,12 @@ export default function ProjectPage() {
         {todoItems.map((item) => (
           <Card
             key={item.id}
-            className="transition-all duration-200 hover:shadow-lg"
+            className={`transition-all duration-200 hover:shadow-lg border-2 ${getCardColor(
+              item.deadline
+            )}`}
           >
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Checkbox
-                  checked={item.completed}
-                  onCheckedChange={(checked) =>
-                    updateTodoItem({ ...item, completed: checked as boolean })
-                  }
-                />
+              <CardTitle className="flex items-center space-x-2 text-base">
                 <span>{item.emoji}</span>
                 {editingItem?.id === item.id ? (
                   <div className="flex space-x-2 flex-grow">
@@ -219,16 +269,23 @@ export default function ProjectPage() {
                       }
                       className="flex-grow"
                     />
-                    <Input
+                    <Select
                       value={editingItem.emoji}
-                      onChange={(e) =>
-                        setEditingItem({
-                          ...editingItem,
-                          emoji: e.target.value,
-                        })
+                      onValueChange={(value) =>
+                        setEditingItem({ ...editingItem, emoji: value })
                       }
-                      className="w-20"
-                    />
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Emoji" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {commonEmojis.map((emoji) => (
+                          <SelectItem key={emoji} value={emoji}>
+                            {emoji}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ) : (
                   <span className={item.completed ? "line-through" : ""}>
@@ -251,22 +308,36 @@ export default function ProjectPage() {
                   Created by: {item.user_email}
                 </p>
                 <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setEditingItem(editingItem?.id === item.id ? null : item)
-                    }
-                  >
-                    <Pencil1Icon className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => deleteTodoItem(item.id)}
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </Button>
+                  {item.user_id === user.id && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => toggleTodoItemCompletion(item)}
+                        className="flex items-center h-10 rounded-md px-8 border-green-500"
+                      >
+                        <CheckIcon className="h-4 w-4 mr-1" />
+                        Done!
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() =>
+                          setEditingItem(
+                            editingItem?.id === item.id ? null : item
+                          )
+                        }
+                      >
+                        <Pencil1Icon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => deleteTodoItem(item.id)}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>

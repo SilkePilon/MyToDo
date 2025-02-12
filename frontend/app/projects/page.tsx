@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { PlusIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import {
+  PlusIcon,
+  Pencil1Icon,
+  TrashIcon,
+  CheckIcon,
+} from "@radix-ui/react-icons";
 import { supabase } from "@/lib/supabase-client";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -22,16 +27,35 @@ interface Project {
   user_id: string;
   emoji: string;
   user_email: string;
+  highest_priority_color: string | null;
 }
+
+interface User {
+  id: string;
+  email: string;
+}
+
+const commonEmojis = [
+  "💻",
+  "📊",
+  "🚀",
+  "🔧",
+  "📱",
+  "🌐",
+  "🔍",
+  "🛠️",
+  "📈",
+  "🤖",
+];
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectEmoji, setNewProjectEmoji] = useState("");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [userFilter, setUserFilter] = useState<string>("all");
-  const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,13 +63,33 @@ export default function ProjectsPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setUser(user);
+      setUser(user ? { id: user.id, email: user.email || "" } : null);
       const { data: projectsData, error: projectsError } = await supabase
         .from("projects_with_users")
-        .select("*");
+        .select("*, todo_items(deadline, completed)")
+        .order("deadline", { foreignTable: "todo_items", ascending: true });
+
       if (projectsError)
         console.error("Error fetching projects:", projectsError);
-      else setProjects(projectsData || []);
+      else {
+        const projectsWithPriority = projectsData?.map((project) => {
+          const highestPriorityTask = project.todo_items.find(
+            (item: { completed: unknown }) => !item.completed
+          );
+          let color = "border-blue-500";
+          if (highestPriorityTask) {
+            const daysUntilDeadline = Math.ceil(
+              (new Date(highestPriorityTask.deadline).getTime() -
+                new Date().getTime()) /
+                (1000 * 3600 * 24)
+            );
+            if (daysUntilDeadline <= 1) color = "border-red-500";
+            else if (daysUntilDeadline <= 3) color = "border-purple-500";
+          }
+          return { ...project, highest_priority_color: color };
+        });
+        setProjects(projectsWithPriority || []);
+      }
 
       const { data: usersData, error: usersError } = await supabase
         .from("users")
@@ -74,7 +118,14 @@ export default function ProjectsPage() {
           variant: "destructive",
         });
       } else {
-        setProjects([...projects, { ...data[0], user_email: user.email }]);
+        setProjects([
+          ...projects,
+          {
+            ...data[0],
+            user_email: user.email,
+            highest_priority_color: "border-blue-500",
+          },
+        ]);
         setNewProjectName("");
         setNewProjectEmoji("");
         toast({ title: "Success", description: "Project added successfully" });
@@ -82,45 +133,68 @@ export default function ProjectsPage() {
     }
   };
 
-  // const updateProject = async (
-  //   id: string,
-  //   newName: string,
-  //   newEmoji: string
-  // ) => {
-  //   const { error } = await supabase
-  //     .from("projects")
-  //     .update({ name: newName, emoji: newEmoji })
-  //     .eq("id", id);
-  //   if (error) {
-  //     console.error("Error updating project:", error);
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to update project",
-  //       variant: "destructive",
-  //     });
-  //   } else {
-  //     setProjects(
-  //       projects.map((p) =>
-  //         p.id === id ? { ...p, name: newName, emoji: newEmoji } : p
-  //       )
-  //     );
-  //     setEditingProject(null);
-  //     toast({ title: "Success", description: "Project updated successfully" });
-  //   }
-  // };
-
-  const deleteProject = async (id: string) => {
-    const { error } = await supabase.from("projects").delete().eq("id", id);
-    if (error) {
-      console.error("Error deleting project:", error);
+  const updateProject = async (
+    id: string,
+    newName: string,
+    newEmoji: string
+  ) => {
+    if (user && editingProject && editingProject.user_id === user.id) {
+      const { error } = await supabase
+        .from("projects")
+        .update({ name: newName, emoji: newEmoji })
+        .eq("id", id);
+      if (error) {
+        console.error("Error updating project:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update project",
+          variant: "destructive",
+        });
+      } else {
+        setProjects(
+          projects.map((p) =>
+            p.id === id ? { ...p, name: newName, emoji: newEmoji } : p
+          )
+        );
+        setEditingProject(null);
+        toast({
+          title: "Success",
+          description: "Project updated successfully",
+        });
+      }
+    } else {
       toast({
         title: "Error",
-        description: "Failed to delete project",
+        description: "You can only edit your own projects",
         variant: "destructive",
       });
+    }
+  };
+
+  const deleteProject = async (id: string) => {
+    const projectToDelete = projects.find((p) => p.id === id);
+    if (user && projectToDelete && projectToDelete.user_id === user.id) {
+      const { error } = await supabase.from("projects").delete().eq("id", id);
+      if (error) {
+        console.error("Error deleting project:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete project",
+          variant: "destructive",
+        });
+      } else {
+        setProjects(projects.filter((p) => p.id !== id));
+        toast({
+          title: "Success",
+          description: "Project deleted successfully",
+        });
+      }
     } else {
-      setProjects(projects.filter((p) => p.id !== id));
-      toast({ title: "Success", description: "Project deleted successfully" });
+      toast({
+        title: "Error",
+        description: "You can only delete your own projects",
+        variant: "destructive",
+      });
     }
   };
 
@@ -163,13 +237,18 @@ export default function ProjectsPage() {
             onChange={(e) => setNewProjectName(e.target.value)}
             className="flex-grow"
           />
-          <Input
-            type="text"
-            placeholder="Emoji"
-            value={newProjectEmoji}
-            onChange={(e) => setNewProjectEmoji(e.target.value)}
-            className="w-20"
-          />
+          <Select value={newProjectEmoji} onValueChange={setNewProjectEmoji}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Emoji" />
+            </SelectTrigger>
+            <SelectContent>
+              {commonEmojis.map((emoji) => (
+                <SelectItem key={emoji} value={emoji}>
+                  {emoji}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button onClick={addProject} className="w-full sm:w-auto">
             <PlusIcon className="mr-2 h-4 w-4" /> Add Project
           </Button>
@@ -194,13 +273,15 @@ export default function ProjectsPage() {
         {filteredProjects.map((project) => (
           <Card
             key={project.id}
-            className="transition-all duration-200 hover:shadow-lg"
+            className={`transition-all duration-200 hover:shadow-lg border-2 ${(
+              project.highest_priority_color || "border-blue-500"
+            ).replace("bg-", "border-")}`}
           >
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <span>{project.emoji}</span>
                 {editingProject?.id === project.id ? (
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 flex-grow">
                     <Input
                       value={editingProject.name}
                       onChange={(e) =>
@@ -211,16 +292,23 @@ export default function ProjectsPage() {
                       }
                       className="flex-grow"
                     />
-                    <Input
+                    <Select
                       value={editingProject.emoji}
-                      onChange={(e) =>
-                        setEditingProject({
-                          ...editingProject,
-                          emoji: e.target.value,
-                        })
+                      onValueChange={(value) =>
+                        setEditingProject({ ...editingProject, emoji: value })
                       }
-                      className="w-20"
-                    />
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Emoji" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {commonEmojis.map((emoji) => (
+                          <SelectItem key={emoji} value={emoji}>
+                            {emoji}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ) : (
                   <span>{project.name}</span>
@@ -236,24 +324,38 @@ export default function ProjectsPage() {
                   <Button variant="outline">View Tasks</Button>
                 </Link>
                 <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setEditingProject(
-                        editingProject?.id === project.id ? null : project
-                      )
-                    }
-                  >
-                    <Pencil1Icon className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => deleteProject(project.id)}
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </Button>
+                  {project.user_id === user.id && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          if (editingProject?.id === project.id) {
+                            updateProject(
+                              project.id,
+                              editingProject.name,
+                              editingProject.emoji
+                            );
+                          } else {
+                            setEditingProject(project);
+                          }
+                        }}
+                      >
+                        {editingProject?.id === project.id ? (
+                          <CheckIcon className="h-4 w-4" />
+                        ) : (
+                          <Pencil1Icon className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => deleteProject(project.id)}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>
