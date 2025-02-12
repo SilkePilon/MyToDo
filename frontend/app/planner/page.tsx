@@ -533,11 +533,11 @@ export default function PlannerPage() {
             >
               {isCurrentDay(entry.date) && entry.user_id === user?.id ? (
                 <Badge className="absolute top-2 right-2 bg-green-500">
-                  Today&apos;s Plan
+                  {entry.user_email.split("@")[0]}&apos;s Plan
                 </Badge>
               ) : entry.user_id !== user?.id ? (
-                <Badge className="absolute top-2 right-2 bg-gray-500">
-                  {getUserEmailById(entry.user_id)}
+                <Badge className="absolute top-2 right-2">
+                  {entry.user_email.split("@")[0]}&apos;s Plan
                 </Badge>
               ) : null}
               <CardHeader>
@@ -602,7 +602,7 @@ export default function PlannerPage() {
                     <p className="text-lg">{entry.content}</p>
                     <div className="flex justify-between items-center mt-4">
                       <p className="text-sm text-muted-foreground">
-                        Created by: {entry.user_email}
+                        {/* Created by: {entry.user_email} */}
                       </p>
                       {entry.user_id === user?.id && (
                         <div className="flex space-x-2">
