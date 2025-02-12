@@ -123,6 +123,40 @@ export default function ProjectPage() {
     }
   };
 
+  const updateTodoItem = async (item: TodoItem) => {
+    if (user && item.user_id === user.id) {
+      const { error } = await supabase
+        .from("todo_items")
+        .update({
+          title: item.title,
+          emoji: item.emoji,
+          deadline: item.deadline,
+        })
+        .eq("id", item.id);
+      if (error) {
+        console.error("Error updating todo item:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update todo item",
+          variant: "destructive",
+        });
+      } else {
+        setTodoItems(todoItems.map((i) => (i.id === item.id ? item : i)));
+        setEditingItem(null);
+        toast({
+          title: "Success",
+          description: "Todo item updated successfully",
+        });
+      }
+    } else {
+      toast({
+        title: "Error",
+        description: "You can only update your own todo items",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteTodoItem = async (id: string) => {
     const itemToDelete = todoItems.find((i) => i.id === id);
     if (user && itemToDelete && itemToDelete.user_id === user.id) {
@@ -288,6 +322,20 @@ export default function ProjectPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <Input
+                      type="date"
+                      value={editingItem.deadline || ""}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem,
+                          deadline: e.target.value,
+                        })
+                      }
+                    />
+                    <Button onClick={() => updateTodoItem(editingItem)}>
+                      Save
+                    </Button>
+                    <Button onClick={() => setEditingItem(null)}>Cancel</Button>
                   </div>
                 ) : (
                   <span className={item.completed ? "line-through" : ""}>
