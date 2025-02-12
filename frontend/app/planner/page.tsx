@@ -125,11 +125,6 @@ export default function PlannerPage() {
     });
   };
 
-  const getUserEmailById = (userId: string) => {
-    const user = users.find((u) => u.id === userId);
-    return user ? user.email : "Unknown User";
-  };
-
   const filteredEntries = entries.filter((entry) => {
     const matchesUser =
       filters.user === "all" || entry.user_id === filters.user;
