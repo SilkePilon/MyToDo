@@ -1,56 +1,74 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { PlusIcon, Pencil1Icon, TrashIcon, CalendarIcon } from "@radix-ui/react-icons"
-import { supabase } from "@/lib/supabase-client"
-import { useToast } from "@/components/ui/use-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  PlusIcon,
+  Pencil1Icon,
+  TrashIcon,
+  CalendarIcon,
+} from "@radix-ui/react-icons";
+import { supabase } from "@/lib/supabase-client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Link from "next/link";
 
 interface PlannerEntry {
-  id: string
-  date: string
-  content: string
-  user_id: string
-  emoji: string
-  user_email: string
+  id: string;
+  date: string;
+  content: string;
+  user_id: string;
+  emoji: string;
+  user_email: string;
 }
 
 export default function PlannerPage() {
-  const [entries, setEntries] = useState<PlannerEntry[]>([])
-  const [newEntryContent, setNewEntryContent] = useState("")
-  const [newEntryEmoji, setNewEntryEmoji] = useState("")
-  const [editingEntry, setEditingEntry] = useState<PlannerEntry | null>(null)
-  const [user, setUser] = useState<any>(null)
-  const [userFilter, setUserFilter] = useState<string>("all")
-  const [users, setUsers] = useState<{ id: string; email: string }[]>([])
-  const { toast } = useToast()
+  const [entries, setEntries] = useState<PlannerEntry[]>([]);
+  const [newEntryContent, setNewEntryContent] = useState("");
+  const [newEntryEmoji, setNewEntryEmoji] = useState("");
+  const [editingEntry, setEditingEntry] = useState<PlannerEntry | null>(null);
+  // @ts-ignore
+  const [user, setUser] = useState<any>(null);
+  const [userFilter, setUserFilter] = useState<string>("all");
+  const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchEntries = async () => {
       const {
         data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
+      } = await supabase.auth.getUser();
+      setUser(user);
       if (user) {
         const { data, error } = await supabase
           .from("planner_entries")
           .select("*, user:users(email)")
-          .order("date", { ascending: false })
-        if (error) console.error("Error fetching planner entries:", error)
-        else setEntries(data.map((entry) => ({ ...entry, user_email: entry.user.email })) || [])
+          .order("date", { ascending: false });
+        if (error) console.error("Error fetching planner entries:", error);
+        else
+          setEntries(
+            data.map((entry) => ({ ...entry, user_email: entry.user.email })) ||
+              []
+          );
 
-        const { data: usersData, error: usersError } = await supabase.from("users").select("id, email")
-        if (usersError) console.error("Error fetching users:", usersError)
-        else setUsers(usersData || [])
+        const { data: usersData, error: usersError } = await supabase
+          .from("users")
+          .select("id, email");
+        if (usersError) console.error("Error fetching users:", usersError);
+        else setUsers(usersData || []);
       }
-    }
-    fetchEntries()
-  }, [])
+    };
+    fetchEntries();
+  }, []);
 
   const addEntry = async () => {
     if (newEntryContent.trim() && user) {
@@ -59,47 +77,85 @@ export default function PlannerPage() {
         content: newEntryContent,
         user_id: user.id,
         emoji: newEntryEmoji,
-      }
-      const { data, error } = await supabase.from("planner_entries").insert(newEntry).select()
+      };
+      const { data, error } = await supabase
+        .from("planner_entries")
+        .insert(newEntry)
+        .select();
       if (error) {
-        console.error("Error adding planner entry:", error)
-        toast({ title: "Error", description: "Failed to add planner entry", variant: "destructive" })
+        console.error("Error adding planner entry:", error);
+        toast({
+          title: "Error",
+          description: "Failed to add planner entry",
+          variant: "destructive",
+        });
       } else {
-        setEntries([{ ...data[0], user_email: user.email }, ...entries])
-        setNewEntryContent("")
-        setNewEntryEmoji("")
-        toast({ title: "Success", description: "Planner entry added successfully" })
+        setEntries([{ ...data[0], user_email: user.email }, ...entries]);
+        setNewEntryContent("");
+        setNewEntryEmoji("");
+        toast({
+          title: "Success",
+          description: "Planner entry added successfully",
+        });
       }
     }
-  }
-
-  const updateEntry = async (id: string, newContent: string, newEmoji: string) => {
+  };
+  // @ts-ignore
+  const updateEntry = async (
+    id: string,
+    newContent: string,
+    newEmoji: string
+  ) => {
     const { error } = await supabase
       .from("planner_entries")
       .update({ content: newContent, emoji: newEmoji })
-      .eq("id", id)
+      .eq("id", id);
     if (error) {
-      console.error("Error updating planner entry:", error)
-      toast({ title: "Error", description: "Failed to update planner entry", variant: "destructive" })
+      console.error("Error updating planner entry:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update planner entry",
+        variant: "destructive",
+      });
     } else {
-      setEntries(entries.map((e) => (e.id === id ? { ...e, content: newContent, emoji: newEmoji } : e)))
-      setEditingEntry(null)
-      toast({ title: "Success", description: "Planner entry updated successfully" })
+      setEntries(
+        entries.map((e) =>
+          e.id === id ? { ...e, content: newContent, emoji: newEmoji } : e
+        )
+      );
+      setEditingEntry(null);
+      toast({
+        title: "Success",
+        description: "Planner entry updated successfully",
+      });
     }
-  }
+  };
 
   const deleteEntry = async (id: string) => {
-    const { error } = await supabase.from("planner_entries").delete().eq("id", id)
+    const { error } = await supabase
+      .from("planner_entries")
+      .delete()
+      .eq("id", id);
     if (error) {
-      console.error("Error deleting planner entry:", error)
-      toast({ title: "Error", description: "Failed to delete planner entry", variant: "destructive" })
+      console.error("Error deleting planner entry:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete planner entry",
+        variant: "destructive",
+      });
     } else {
-      setEntries(entries.filter((e) => e.id !== id))
-      toast({ title: "Success", description: "Planner entry deleted successfully" })
+      setEntries(entries.filter((e) => e.id !== id));
+      toast({
+        title: "Success",
+        description: "Planner entry deleted successfully",
+      });
     }
-  }
+  };
 
-  const filteredEntries = userFilter === "all" ? entries : entries.filter((e) => e.user_id === userFilter)
+  const filteredEntries =
+    userFilter === "all"
+      ? entries
+      : entries.filter((e) => e.user_id === userFilter);
 
   if (!user) {
     return (
@@ -109,7 +165,8 @@ export default function PlannerPage() {
         </CardHeader>
         <CardContent>
           <p>
-            Plan your day efficiently with MyToDo Daily Planner. Create and manage your daily plans all in one place.
+            Plan your day efficiently with MyToDo Daily Planner. Create and
+            manage your daily plans all in one place.
           </p>
           <p className="mt-4">Please sign in to start planning your day.</p>
           <Button asChild className="mt-4">
@@ -117,7 +174,7 @@ export default function PlannerPage() {
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -162,7 +219,10 @@ export default function PlannerPage() {
       </Card>
       <div className="space-y-4">
         {filteredEntries.map((entry) => (
-          <Card key={entry.id} className="transition-all duration-200 hover:shadow-lg">
+          <Card
+            key={entry.id}
+            className="transition-all duration-200 hover:shadow-lg"
+          >
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <CalendarIcon className="h-4 w-4" />
@@ -175,28 +235,48 @@ export default function PlannerPage() {
                 <div className="space-y-2">
                   <Input
                     value={editingEntry.emoji}
-                    onChange={(e) => setEditingEntry({ ...editingEntry, emoji: e.target.value })}
+                    onChange={(e) =>
+                      setEditingEntry({
+                        ...editingEntry,
+                        emoji: e.target.value,
+                      })
+                    }
                     className="w-20"
                   />
                   <Textarea
                     value={editingEntry.content}
-                    onChange={(e) => setEditingEntry({ ...editingEntry, content: e.target.value })}
+                    onChange={(e) =>
+                      setEditingEntry({
+                        ...editingEntry,
+                        content: e.target.value,
+                      })
+                    }
                   />
                 </div>
               ) : (
                 <p>{entry.content}</p>
               )}
               <div className="flex justify-between items-center mt-4">
-                <p className="text-sm text-muted-foreground">Created by: {entry.user_email}</p>
+                <p className="text-sm text-muted-foreground">
+                  Created by: {entry.user_email}
+                </p>
                 <div className="flex space-x-2">
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setEditingEntry(editingEntry?.id === entry.id ? null : entry)}
+                    onClick={() =>
+                      setEditingEntry(
+                        editingEntry?.id === entry.id ? null : entry
+                      )
+                    }
                   >
                     <Pencil1Icon className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={() => deleteEntry(entry.id)}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => deleteEntry(entry.id)}
+                  >
                     <TrashIcon className="h-4 w-4" />
                   </Button>
                 </div>
@@ -206,6 +286,5 @@ export default function PlannerPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }
-

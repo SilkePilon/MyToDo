@@ -1,94 +1,136 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { PlusIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons"
-import { supabase } from "@/lib/supabase-client"
-import Link from "next/link"
-import { useToast } from "@/components/ui/use-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+"use client";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { PlusIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import { supabase } from "@/lib/supabase-client";
+import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Project {
-  id: string
-  name: string
-  user_id: string
-  emoji: string
-  user_email: string
+  id: string;
+  name: string;
+  user_id: string;
+  emoji: string;
+  user_email: string;
 }
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [newProjectName, setNewProjectName] = useState("")
-  const [newProjectEmoji, setNewProjectEmoji] = useState("")
-  const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [user, setUser] = useState<any>(null)
-  const [userFilter, setUserFilter] = useState<string>("all")
-  const [users, setUsers] = useState<{ id: string; email: string }[]>([])
-  const { toast } = useToast()
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectEmoji, setNewProjectEmoji] = useState("");
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  // @ts-ignore
+  const [user, setUser] = useState<any>(null);
+  const [userFilter, setUserFilter] = useState<string>("all");
+  const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProjects = async () => {
       const {
         data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
+      } = await supabase.auth.getUser();
+      setUser(user);
       const { data: projectsData, error: projectsError } = await supabase
         .from("projects")
-        .select("*, user:users(email)")
-      if (projectsError) console.error("Error fetching projects:", projectsError)
-      else setProjects(projectsData.map((p) => ({ ...p, user_email: p.user.email })) || [])
+        .select("*, user:users(email)");
+      if (projectsError)
+        console.error("Error fetching projects:", projectsError);
+      else
+        setProjects(
+          projectsData.map((p) => ({ ...p, user_email: p.user.email })) || []
+        );
 
-      const { data: usersData, error: usersError } = await supabase.from("users").select("id, email")
-      if (usersError) console.error("Error fetching users:", usersError)
-      else setUsers(usersData || [])
-    }
-    fetchProjects()
-  }, [])
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("id, email");
+      if (usersError) console.error("Error fetching users:", usersError);
+      else setUsers(usersData || []);
+    };
+    fetchProjects();
+  }, []);
 
   const addProject = async () => {
     if (newProjectName.trim() && user) {
       const { data, error } = await supabase
         .from("projects")
-        .insert({ name: newProjectName, user_id: user.id, emoji: newProjectEmoji })
-        .select()
+        .insert({
+          name: newProjectName,
+          user_id: user.id,
+          emoji: newProjectEmoji,
+        })
+        .select();
       if (error) {
-        console.error("Error adding project:", error)
-        toast({ title: "Error", description: "Failed to add project", variant: "destructive" })
+        console.error("Error adding project:", error);
+        toast({
+          title: "Error",
+          description: "Failed to add project",
+          variant: "destructive",
+        });
       } else {
-        setProjects([...projects, { ...data[0], user_email: user.email }])
-        setNewProjectName("")
-        setNewProjectEmoji("")
-        toast({ title: "Success", description: "Project added successfully" })
+        setProjects([...projects, { ...data[0], user_email: user.email }]);
+        setNewProjectName("");
+        setNewProjectEmoji("");
+        toast({ title: "Success", description: "Project added successfully" });
       }
     }
-  }
-
-  const updateProject = async (id: string, newName: string, newEmoji: string) => {
-    const { error } = await supabase.from("projects").update({ name: newName, emoji: newEmoji }).eq("id", id)
+  };
+  // @ts-ignore
+  const updateProject = async (
+    id: string,
+    newName: string,
+    newEmoji: string
+  ) => {
+    const { error } = await supabase
+      .from("projects")
+      .update({ name: newName, emoji: newEmoji })
+      .eq("id", id);
     if (error) {
-      console.error("Error updating project:", error)
-      toast({ title: "Error", description: "Failed to update project", variant: "destructive" })
+      console.error("Error updating project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update project",
+        variant: "destructive",
+      });
     } else {
-      setProjects(projects.map((p) => (p.id === id ? { ...p, name: newName, emoji: newEmoji } : p)))
-      setEditingProject(null)
-      toast({ title: "Success", description: "Project updated successfully" })
+      setProjects(
+        projects.map((p) =>
+          p.id === id ? { ...p, name: newName, emoji: newEmoji } : p
+        )
+      );
+      setEditingProject(null);
+      toast({ title: "Success", description: "Project updated successfully" });
     }
-  }
+  };
 
   const deleteProject = async (id: string) => {
-    const { error } = await supabase.from("projects").delete().eq("id", id)
+    const { error } = await supabase.from("projects").delete().eq("id", id);
     if (error) {
-      console.error("Error deleting project:", error)
-      toast({ title: "Error", description: "Failed to delete project", variant: "destructive" })
+      console.error("Error deleting project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete project",
+        variant: "destructive",
+      });
     } else {
-      setProjects(projects.filter((p) => p.id !== id))
-      toast({ title: "Success", description: "Project deleted successfully" })
+      setProjects(projects.filter((p) => p.id !== id));
+      toast({ title: "Success", description: "Project deleted successfully" });
     }
-  }
+  };
 
-  const filteredProjects = userFilter === "all" ? projects : projects.filter((p) => p.user_id === userFilter)
+  const filteredProjects =
+    userFilter === "all"
+      ? projects
+      : projects.filter((p) => p.user_id === userFilter);
 
   if (!user) {
     return (
@@ -98,16 +140,18 @@ export default function ProjectsPage() {
         </CardHeader>
         <CardContent>
           <p>
-            Organize your tasks efficiently with MyToDo Projects. Create, manage, and track your projects all in one
-            place.
+            Organize your tasks efficiently with MyToDo Projects. Create,
+            manage, and track your projects all in one place.
           </p>
-          <p className="mt-4">Please sign in to start managing your projects.</p>
+          <p className="mt-4">
+            Please sign in to start managing your projects.
+          </p>
           <Button asChild className="mt-4">
             <Link href="/">Sign In</Link>
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -151,7 +195,10 @@ export default function ProjectsPage() {
       </Card>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredProjects.map((project) => (
-          <Card key={project.id} className="transition-all duration-200 hover:shadow-lg">
+          <Card
+            key={project.id}
+            className="transition-all duration-200 hover:shadow-lg"
+          >
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <span>{project.emoji}</span>
@@ -159,12 +206,22 @@ export default function ProjectsPage() {
                   <div className="flex space-x-2">
                     <Input
                       value={editingProject.name}
-                      onChange={(e) => setEditingProject({ ...editingProject, name: e.target.value })}
+                      onChange={(e) =>
+                        setEditingProject({
+                          ...editingProject,
+                          name: e.target.value,
+                        })
+                      }
                       className="flex-grow"
                     />
                     <Input
                       value={editingProject.emoji}
-                      onChange={(e) => setEditingProject({ ...editingProject, emoji: e.target.value })}
+                      onChange={(e) =>
+                        setEditingProject({
+                          ...editingProject,
+                          emoji: e.target.value,
+                        })
+                      }
                       className="w-20"
                     />
                   </div>
@@ -174,7 +231,9 @@ export default function ProjectsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">Created by: {project.user_email}</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Created by: {project.user_email}
+              </p>
               <div className="flex justify-between items-center">
                 <Link href={`/projects/${project.id}`}>
                   <Button variant="outline">View Tasks</Button>
@@ -183,11 +242,19 @@ export default function ProjectsPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setEditingProject(editingProject?.id === project.id ? null : project)}
+                    onClick={() =>
+                      setEditingProject(
+                        editingProject?.id === project.id ? null : project
+                      )
+                    }
                   >
                     <Pencil1Icon className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={() => deleteProject(project.id)}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => deleteProject(project.id)}
+                  >
                     <TrashIcon className="h-4 w-4" />
                   </Button>
                 </div>
@@ -197,6 +264,5 @@ export default function ProjectsPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }
-
