@@ -182,10 +182,12 @@ export default function ProjectPage() {
     }
   };
 
-  const getCardColor = (deadline: string | null) => {
-    if (!deadline) return "border-blue-500";
+  const getCardColor = (item: TodoItem) => {
+    if (item.completed) return "border-green-500";
+    if (!item.deadline) return "border-blue-500";
     const daysUntilDeadline = Math.ceil(
-      (new Date(deadline).getTime() - new Date().getTime()) / (1000 * 3600 * 24)
+      (new Date(item.deadline).getTime() - new Date().getTime()) /
+        (1000 * 3600 * 24)
     );
     if (daysUntilDeadline <= 1) return "border-red-500";
     if (daysUntilDeadline <= 3) return "border-purple-500";
@@ -219,7 +221,7 @@ export default function ProjectPage() {
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
           <Input
             type="text"
-            placeholder="New todo item"
+            placeholder="New task"
             value={newItemTitle}
             onChange={(e) => setNewItemTitle(e.target.value)}
             className="flex-grow"
@@ -242,7 +244,7 @@ export default function ProjectPage() {
             onChange={(e) => setNewItemDeadline(e.target.value)}
           />
           <Button onClick={addTodoItem} className="w-full sm:w-auto">
-            <PlusIcon className="mr-2 h-4 w-4" /> Add Item
+            <PlusIcon className="mr-2 h-4 w-4" /> Add Task
           </Button>
         </div>
       </Card>
@@ -251,7 +253,7 @@ export default function ProjectPage() {
           <Card
             key={item.id}
             className={`transition-all duration-200 hover:shadow-lg border-2 ${getCardColor(
-              item.deadline
+              item
             )}`}
           >
             <CardHeader>
@@ -313,28 +315,39 @@ export default function ProjectPage() {
                       <Button
                         variant="outline"
                         onClick={() => toggleTodoItemCompletion(item)}
-                        className="flex items-center h-10 rounded-md px-8 border-green-500"
+                        className={`flex items-center h-10 rounded-md px-8 ${
+                          item.completed
+                            ? "border-2"
+                            : "border-green-500 border-2"
+                        }`}
                       >
                         <CheckIcon className="h-4 w-4 mr-1" />
-                        Done!
+                        {item.completed
+                          ? "Undo Completion"
+                          : "Mark as completed"}
                       </Button>
+                      {item.completed ? null : (
+                        <Button
+                          className="border-2"
+                          variant="outline"
+                          size="icon"
+                          onClick={() =>
+                            setEditingItem(
+                              editingItem?.id === item.id ? null : item
+                            )
+                          }
+                        >
+                          <Pencil1Icon className="h-4 w-4" />
+                        </Button>
+                      )}
+
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() =>
-                          setEditingItem(
-                            editingItem?.id === item.id ? null : item
-                          )
-                        }
-                      >
-                        <Pencil1Icon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
+                        className="border-red-500 border-2"
                         onClick={() => deleteTodoItem(item.id)}
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        <TrashIcon className="h-4 w-4 text-red-500" />
                       </Button>
                     </>
                   )}
