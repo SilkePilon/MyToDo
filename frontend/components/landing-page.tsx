@@ -55,7 +55,7 @@ export function LandingPage() {
         <CardContent>
           {!hasDailyPlan && (
             <div className="mb-6 bg-yellow-50 p-4 rounded-lg">
-              <p className="text-yellow-800">You haven't planned your day yet!</p>
+              <p className="text-yellow-800">You haven&apos;t planned your day yet!</p>
               <Button
                 onClick={() => router.push('/planner')}
                 className="mt-2"
